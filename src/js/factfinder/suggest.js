@@ -205,7 +205,7 @@ var FactFinderSuggest = Class.create(Varien.searchForm, {
     },
 
     _loadData: function(data) {
-        this.request.updateChoices(this.loadDataCallback(data));
+        this.request.updateChoices(this.loadDataCallback(data, this.field.value));
     },
 
     _selectAutocompleteItem : function(element){

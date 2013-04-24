@@ -24,12 +24,17 @@
         <label for="search"><?php echo $this->__('Search:') ?></label>
         <input id="search" type="text" name="<?php echo $this->helper('catalogsearch')->getQueryParamName() ?>" value="<?php echo $this->helper('catalogsearch')->getEscapedQueryText() ?>" class="input-text ff-basic-autocomplete" />
         <button type="submit" title="<?php echo $this->__('Search') ?>" class="button"><span><span><?php echo $this->__('Search') ?></span></span></button>
-        <div id="search_autocomplete" class="search-autocomplete advanced-suggest"></div>
+        <div id="search_autocomplete" class="search-autocomplete advanced-suggest border-box"></div>
         <script type="text/javascript">
         //<![CDATA[
 			<?php if (Mage::helper('factfinder/search')->getIsEnabled(false, 'suggest')):?>
-								
-				var loadDataCallback = function(data) {
+
+                Translator.add('productName suggestions', '<?php echo $this->__('productName suggestions'); ?>');
+                Translator.add('category suggestions', '<?php echo $this->__('category suggestions'); ?>');
+                Translator.add('brand suggestions', '<?php echo $this->__('brand suggestions'); ?>');
+                Translator.add('searchTerm suggestions', '<?php echo $this->__('searchTerm suggestions'); ?>');
+
+                var loadDataCallback = function(data, searchTerm) {
 					// Internationalization lookup:
 					// Add a new anonymous object for every string you want to internationalize (with the property being the string).
 					// These objects consist of one string for each locale, where the property is the locale code.
@@ -49,28 +54,16 @@
 							return i18n[string];
 					}
 
-                    console.log(data);
-				
-					var content = '<ul>';
-					content += '<li style="display: none" class="selected selectable-item"></li>';
-					var currentChannel = '';
-					if(data.length) {
-                        if(data[0].channel == '<?php echo Mage::getStoreConfig('factfinder/search/channel'); ?>') {
-                            content += '<li class="delimiter"><?php echo $this->__('Products'); ?></li>';
-                        } else {
-                            content += '<li class="delimiter">' + translate('Channel: ' + data[0].channel) + '</li>';
-                        }
-                        currentChannel = data[0].channel;
-                    }
+                    var sections = new Array();
+                    var sectionTypes = new Array();
+                    var st = 0;
+                    var colLeftItems = 0;
+                    var colRightItems = 0;
 
 					for(var i = 0; i < data.length; i++) {
 						var item = data[i];
-						if(item.channel != currentChannel)
-						{
-							content += '<li class="delimiter">' + translate('Channel: ' + item.channel) + '</li>';
-							currentChannel = item.channel;
-						}
 						var temp = '';
+
 						temp += '<li title="' + item.name + '" class="selectable-item ' + item.type + '"';
                         if(item.attributes.deeplink != undefined && item.attributes.deeplink != '')
                         {
@@ -78,17 +71,65 @@
                         }
                         temp += '>';
 
-						temp += '<span class="amount">' + (item.hitCount == 0 ? '' : item.hitCount) + '</span>';
+						temp += '<span class="amount">' + (item.hitCount == 0 ? '' : item.hitCount + ' <?php echo $this->__('Products'); ?>') + '</span>';
 						if(item.image)
 						{
 							temp += '<img src="' + item.image + '" title="' + item.name + '" class="thumbnail"/>';
 						}
-						temp += item.name;
-						temp += '</li>';
-						content += temp;
+
+                        temp += item.name.replace(new RegExp('('+searchTerm+')', "ig"), '<span class="search-term">$1</span>');
+                        temp += '</li>';
+
+                        if (item.type == 'productName') {
+                            colRightItems++;
+                        } else {
+                            colLeftItems++;
+                        }
+
+                        if (sectionTypes.indexOf(item.type) == -1) {
+                            sectionTypes[st++] = item.type;
+                        }
+
+                        if (typeof sections[item.type] == 'undefined') {
+                            sections[item.type] = temp;
+                        }
+                        sections[item.type] += temp;
 					}
-					content += '</ul>';
-					return content;
+
+                    var addCss = (colLeftItems == 0 || colRightItems == 0 ? 'single-column' : '');
+
+                    var output = '';
+                    if (colLeftItems > 0) {
+                        output += '<div class="column column-left border-box ' + addCss +'">';
+                        for (var t = 0; t < sectionTypes.length; t++)
+                        {
+                            if (sectionTypes[t] != 'productName') {
+                                output += '<ul class="'+sectionTypes[t]+'">';
+                                output += '<li class="delimiter">' + Translator.translate(sectionTypes[t] + ' suggestions') + '</li>';
+                                output += sections[sectionTypes[t]];
+                                output += '</ul>';
+                            }
+                        }
+                        output += '</div>';
+                    }
+
+                    if (colRightItems > 0) {
+                        output += '<div class="column column-right border-box ' + addCss +'">';
+                        for (var t = 0; t < sectionTypes.length; t++)
+                        {
+                            if (sectionTypes[t] == 'productName') {
+                                output += '<ul class="'+sectionTypes[t]+'">';
+                                output += '<li class="delimiter">' + Translator.translate(sectionTypes[t] + ' suggestions') + '</li>';
+                                output += sections[sectionTypes[t]];
+                                output += '</ul>';
+                            }
+                        }
+                        output += '</div>';
+                    }
+
+                    // comment in if suggest should open to left side
+					// return '<div class="advanced-suggest-data open-left ' + addCss +'">'+output+'</div>';
+					return '<div class="advanced-suggest-data ' + addCss +'">'+output+'</div>';
 				};
 				
 				var searchForm = new FactFinderSuggest('search_mini_form', 'search', '<?php echo $this->__('Search entire shop here...') ?>', loadDataCallback);
