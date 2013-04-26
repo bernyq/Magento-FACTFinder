@@ -106,6 +106,7 @@
                             if (sectionTypes[t] != 'productName') {
                                 output += '<ul class="'+sectionTypes[t]+'">';
                                 output += '<li class="delimiter">' + Translator.translate(sectionTypes[t] + ' suggestions') + '</li>';
+                                output += '<li style="display: none" class="selected selectable-item"></li>';
                                 output += sections[sectionTypes[t]];
                                 output += '</ul>';
                             }
@@ -120,6 +121,7 @@
                             if (sectionTypes[t] == 'productName') {
                                 output += '<ul class="'+sectionTypes[t]+'">';
                                 output += '<li class="delimiter">' + Translator.translate(sectionTypes[t] + ' suggestions') + '</li>';
+                                output += '<li style="display: none" class="selected selectable-item"></li>';
                                 output += sections[sectionTypes[t]];
                                 output += '</ul>';
                             }
