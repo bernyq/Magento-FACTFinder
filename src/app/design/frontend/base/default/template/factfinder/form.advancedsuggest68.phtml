@@ -92,8 +92,9 @@
 
                         if (typeof sections[item.type] == 'undefined') {
                             sections[item.type] = temp;
+                        } else {
+                            sections[item.type] += temp;
                         }
-                        sections[item.type] += temp;
 					}
 
                     var addCss = (colLeftItems == 0 || colRightItems == 0 ? 'single-column' : '');
