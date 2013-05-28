@@ -595,7 +595,7 @@ class Flagbit_FactFinder_Model_Export_Product extends Mage_CatalogSearch_Model_M
 		foreach($this->_exportAttributes AS $pos => $attribute) {
 			if ($attribute != null) {
 				$value = isset($values[$attribute->getId()]) ? $values[$attribute->getId()] : null;
-				$dataArray[$pos] = $this->_getAttributeValue($attribute->getId(), $value, $storeId);
+				$dataArray[$pos] = $this->_getAttributeValue_CUSTOMIZED($attribute->getId(), $value, $storeId);
 			} else if (!array_key_exists($pos, $dataArray)) {
                 // it is very unlikely that an attribute exists in the header but is not delivered by "getSearchableAttributes",
                 // but actually it might be a result of a broken database or something like that..
@@ -603,4 +603,69 @@ class Flagbit_FactFinder_Model_Export_Product extends Mage_CatalogSearch_Model_M
             }
 		}
     }
+    
+    /**
+     * an alternative to Magentos "_getAttributeValue" method.
+     * this implementation is caching the fetched values so they can be reused later on
+     */
+	protected function _getAttributeValue_CUSTOMIZED($attribute, $value, $storeId)
+    {
+        if ($attribute->usesSource()) {
+            $attribute->setStoreId($storeId);
+			// same method except of this line:
+            //$value = $attribute->getSource()->getOptionText($value);
+			$value = $this->getAttributeOptionText_CUSTOMIZED($attribute, $value);
+        }
+        if ($attribute->getBackendType() == 'datetime') {
+            $value = $this->_getStoreDate($storeId, $value);
+        }
+
+        $inputType = $attribute->getFrontend()->getInputType();
+        if ($inputType == 'price') {
+            $value = Mage::app()->getStore($storeId)->roundPrice($value);
+        }
+
+        if (is_array($value)) {
+            $value = implode($this->_separator, $value);
+        } elseif (empty($value) && ($inputType == 'select' || $inputType == 'multiselect')) {
+            return null;
+        }
+
+        return preg_replace("#\s+#siu", ' ', trim(strip_tags($value)));
+    }
+	
+	protected $_indexedAttributeOptions = array();
+	
+	protected function getAttributeOptionText_CUSTOMIZED($attribute, $value) {
+		$isMultiple = false;
+        if (strpos($value, ',')) {
+            $isMultiple = true;
+            $value = explode(',', $value);
+        }
+
+		// index options as hashed array
+		if (!isset($this->_indexedAttributeOptions[$attribute->getId()])) {
+			$indexedOptions = array();
+			$options = $attribute->getSource()->getAllOptions(false);
+			foreach ($options AS $item) {
+				$indexedOptions[$item['value']] = $item['label'];
+			}
+			$this->_indexedAttributeOptions[$attribute->getId()] = $indexedOptions;
+		} else {
+			$indexedOptions = $this->_indexedAttributeOptions[$attribute->getId()];
+		}
+
+        if ($isMultiple) {
+            $values = array();
+            foreach ($value as $valueItem) {
+                $values[] = $indexedOptions[$valueItem];
+            }
+            return $values;
+        }
+
+        if (isset($indexedOptions[$value])) {
+			return $indexedOptions[$value];
+		}
+        return false;
+	}
 }
